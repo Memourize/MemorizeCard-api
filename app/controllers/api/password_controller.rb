@@ -39,8 +39,12 @@ class Api::PasswordController < ApplicationController
     email, code, password = reset_params
 
     if validate(email, code)
-      @user.update(password: password)
-      head :ok
+      if @user.update(password: password)
+        @reset_record.destroy
+        head :ok
+      else
+        render json: { errors: @user.errors.full_messages }, status: :unprocessable_entity
+      end
     else
       render json: { message: "invalid token" }, status: :bad_request
     end
@@ -71,7 +75,7 @@ class Api::PasswordController < ApplicationController
       return false
     end
 
-    BCrypt::Password.create(code) == code
+    BCrypt::Password.new(@reset_record.token_hash) == code
   end
 
   def forgot_params
